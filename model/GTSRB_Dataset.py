@@ -21,7 +21,7 @@ import pandas as pd
 from torchvision import read_image
 from torch.utils.data import Dataset
 
-class OurDataset(Dataset):
+class GTSRB_Dataset(Dataset):
     
     def __init__(self,labels_path,imgs_dir,transform=None):
         super().__init__()
@@ -35,13 +35,13 @@ class OurDataset(Dataset):
 
     def __getitem__(self, index):
         # create the imgs path
-        imgs_path = os.join(self.imgs_dir,self.labels.iloc[index,0])
+        imgs_path = os.join(self.imgs_dir,self.labels.iloc[index,7])
 
         # read the image with the path
         image = read_image(imgs_path) # cv2.imread(imgs_path) for opencv
 
         # read the label
-        label = self.labels.iloc[index,1]
+        label = self.labels.iloc[index,6]
 
         # apply transformations
         if self.transform:
