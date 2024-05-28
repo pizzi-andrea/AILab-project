@@ -18,7 +18,7 @@ img4.jpg,0
 
 import os
 import pandas as pd
-from torchvision import read_image
+from torchvision.io import read_image
 from torch.utils.data import Dataset
 
 class GTSRB_Dataset(Dataset):
@@ -35,7 +35,7 @@ class GTSRB_Dataset(Dataset):
 
     def __getitem__(self, index):
         # create the imgs path
-        imgs_path = os.join(self.imgs_dir,self.labels.iloc[index,7])
+        imgs_path = os.path.join(self.imgs_dir,self.labels.iloc[index,7])
 
         # read the image with the path
         image = read_image(imgs_path) # cv2.imread(imgs_path) for opencv
