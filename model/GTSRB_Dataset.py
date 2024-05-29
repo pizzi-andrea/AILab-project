@@ -18,6 +18,7 @@ img4.jpg,0
 from pathlib import Path
 import pandas as pd
 from torchvision.io import read_image
+from torchvision.io import read_image
 from torch.utils.data import Dataset
 from torchvision.transforms import v2 
 from torch.nn import Module
