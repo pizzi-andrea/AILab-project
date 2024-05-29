@@ -17,16 +17,16 @@ img4.jpg,0
 '''
 from pathlib import Path
 import pandas as pd
+from torch import Tensor
 from torchvision.io import read_image
 from torchvision.io import read_image
 from torch.utils.data import Dataset
 from torchvision.transforms import v2 
 from torch.nn import Module
 from __global__ import *
-
 class GTSRB_Dataset(Dataset):
     
-    def __init__(self,labels_path:Path, imgs_dir:Path,transform:Module = None) -> None:
+    def __init__(self,labels_path:Path, imgs_dir:Path,transform:v2.Compose = None) -> None:
         super().__init__()
         self.imgs_dir = imgs_dir
         self.transform = transform
@@ -35,23 +35,25 @@ class GTSRB_Dataset(Dataset):
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __getitem__(self, index:int) -> any:
+    def __getitem__(self, index:int) -> tuple[Tensor, int]: # type: ignore
         # create the imgs path
 
-        imgs_path = Path.joinpath(self.imgs_dir,self.labels.iloc[index,7])
+        imgs_path = Path.joinpath(self.imgs_dir,self.labels.iloc[index,7]) # type: ignore
 
         # read the image with the path
-        image = read_image(imgs_path) # cv2.imread(imgs_path) for opencv
+        image = read_image(imgs_path) # cv2.imread(imgs_path) for opencv # type: ignore
 
         # read the label
         label = self.labels.iloc[index,6]
 
         # apply transformations
         if self.transform:
-            image = self.transform(image)
+            out = self.transform(image)
+        else:
+            out = image
 
         # return the pair image,label
-        return image,label
+        return out ,label # type: ignore
 
 if __name__ == '__main__':
     dataset_train = GTSRB_Dataset(labels_path=LABELS_PATH_TRAIN, imgs_dir=IMGS_PATH_TRAIN)
