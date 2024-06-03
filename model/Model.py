@@ -1,147 +1,72 @@
-import torch 
-import collections
+import torch
 from torch import nn
-from torch.utils.data import DataLoader
-from torch.optim import Optimizer
-from time import time
-from tqdm.auto import tqdm
-from torchmetrics.classification import MulticlassAccuracy
 
+# Create a convolutional neural network
 
-
-def trainModel(model: nn.Module, 
-               dataloader: DataLoader,
-               loss_fn: nn.Module, 
-               optimizer: Optimizer,
-               device: torch.device,
-               epoch = 15):
+class ModelCNN(nn.Module):
     """
-        Main loop for traning the model
+    Model architecture copying TinyVGG from:
+    https://poloclub.github.io/cnn-explainer/
     """
-    since = time()
-    model.to(device)
-    if model.train(True).training:
-        BATCH_SIZE = dataloader.batch_size
-        ordered_dict["phase"] = "train"
-    else:
-        return 1
+    def __init__(self, input_shape: int, hidden_units: int, output_shape: int):
+        super().__init__()
+        self.block_1 = nn.Sequential(
+            nn.Conv2d(in_channels=input_shape,
+                      out_channels=hidden_units,
+                      kernel_size=3, # how big is the square that's going over the image?
+                      stride=1, # default
+                      padding=1),# options = "valid" (no padding) or "same" (output has same shape as input) or int for specific number
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=hidden_units,
+                      out_channels=hidden_units,
+                      kernel_size=3,
+                      stride=1,
+                      padding=1),
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2,
+                         stride=2) # default stride value is same as kernel_size
+        )
+        self.block_2 = nn.Sequential(
+            nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.block_3 = nn.Sequential(
+            nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+            nn.BatchNorm2d(hidden_units),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
 
-    metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True)
-    # Main loop for traning
-    for epoch in range(epoch):
-        print("epoch {}".format(epoch))
-        
-        
-        pbar = tqdm()
-        pbar.reset(total=len(dataloader.dataset))
-        ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
-        
-        running_loss = 0.0
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            # Where did this in_features shape come from?
+            # It's because each layer of our network compresses and changes the shape of our inputs data.
+            nn.Linear(in_features=hidden_units*8*8,
+                      out_features=hidden_units*8*8),
+            nn.Linear(in_features=hidden_units*8*8,
+                      out_features=output_shape)
+        )
 
-        for batch, data in enumerate(dataloader):
+    def forward(self, x: torch.Tensor):
+        x = self.block_1(x)
+        #print(x.shape)
+        x = self.block_2(x)
+        #print(x.shape)
+        #x = self.block_3(x)
+        x = self.classifier(x)
+        #print(x.shape)
+        return x
 
-            X, y = data
-
-            X = X.to(device)
-            y = y.to(device)
-
-            pbar.update(batch)  
-            optimizer.zero_grad()
-            
-            # make prediction for X test data
-            y_pred = model(X)
-
-            loss = loss_fn(y_pred, y)
-            loss.backward()
-            optimizer.step()
-
-            # Calculate metrics
-
-            running_loss += loss.item()
-
-            ordered_dict["Acc"] = metric_acc(y_pred, y)
-            ordered_dict["Loss"] = f"{loss.item():.4f}"
-
-            pbar.set_postfix(ordered_dict=ordered_dict)
-            
-        
-        # Print metrics after one epochs
-        epoch_loss = running_loss / len(dataloader)
-        epoch_acc = metric_acc.compute()
-
-        ordered_dict["Loss"] = f"{epoch_loss:.4f}"
-        ordered_dict["Acc"] = f"{epoch_acc:.4f}"
-
-        pbar.set_postfix(ordered_dict=ordered_dict)
-        pbar.close()
-
-
-
-    # Show final metrics
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
-
-def testModel(model: nn.Module, 
-               dataloader: DataLoader,
-               loss_fn: nn.Module, 
-               device: torch.device,
-               epoch = 15):
-    """
-        Main loop for testing the model
-    """
-    since = time()
-    model.to(device)
-    
-    metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True)
-    # Main loop for traning
-    with torch.no_grad():
-        for epoch in range(epoch):
-            print("epoch {}".format(epoch))
-            
-            pbar = tqdm()
-            pbar.reset(total=len(dataloader.dataset))
-            ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
-            
-            running_loss = 0.0
-
-            for batch, data in enumerate(dataloader):
-
-                X, y = data
-
-                X = X.to(device)
-                y = y.to(device)
-
-                pbar.update(batch)  
-                
-                # make prediction for X test data
-                y_pred = model(X)
-
-                loss = loss_fn(y_pred, y)
-
-                # Calculate metrics
-
-                running_loss += loss.item()
-
-                ordered_dict["Acc"] = metric_acc(y_pred, y)
-                ordered_dict["Loss"] = f"{loss.item():.4f}"
-
-                pbar.set_postfix(ordered_dict=ordered_dict)
-                
-            
-            # Print metrics after one epochs
-            epoch_loss = running_loss / len(dataloader)
-            epoch_acc = metric_acc.compute()
-
-            ordered_dict["Loss"] = f"{epoch_loss:.4f}"
-            ordered_dict["Acc"] = f"{epoch_acc:.4f}"
-
-            pbar.set_postfix(ordered_dict=ordered_dict)
-            pbar.close()
-
-
-
-    # Show final metrics
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
