@@ -84,10 +84,6 @@ def trainModel(model: nn.Module,
 
 
 
-    # Show final metrics
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
 
 def testModel(model: nn.Module, 
                dataloader: DataLoader,
@@ -100,7 +96,7 @@ def testModel(model: nn.Module,
     since = time()
     model.to(device)
     
-    metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True)
+    metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True).to(device)
     # Main loop for traning
     with torch.no_grad():
         for epoch in range(epoch):
@@ -115,7 +111,6 @@ def testModel(model: nn.Module,
             for batch, data in enumerate(dataloader):
 
                 X, y = data
-
                 X = X.to(device)
                 y = y.to(device)
 
@@ -149,21 +144,17 @@ def testModel(model: nn.Module,
             pbar.close()
 
 
-    # Show final metrics
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
     
 
 if __name__ == '__main__':
 
-    EPOCH = 10
+    EPOCH = 14
     seq = v2.Compose([
         v2.ToDtype(torch.float32, scale=True),
         v2.Resize((32, 32), interpolation=InterpolationMode.NEAREST_EXACT),
         v2.RandomHorizontalFlip(),
         v2.RandomAutocontrast(p=1.0),
-        #v2.RandomEqualize()
+        v2.RandomEqualize()
         
     ])
 
@@ -171,7 +162,7 @@ if __name__ == '__main__':
     dataset_test = Dataset(labels_path=LABELS_PATH_TEST, imgs_dir=IMGS_PATH_TEST, transform=seq)
 
 
-    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
+    loader_train = DataLoader(dataset_train, batch_size=128, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
     model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
@@ -179,7 +170,7 @@ if __name__ == '__main__':
 
     loss_fn = nn.CrossEntropyLoss()
 
-    optimizer = torch.optim.SGD(model.parameters(),  lr=0.005, momentum=0.9, weight_decay=5e-4)
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001, weight_decay=5e-4)
 
-    #trainModel(model, loader_train, loss_fn, optimizer, device, 64)
-    testModel(model, loader_test, loss_fn, device)
+    trainModel(model, loader_train, loss_fn, optimizer, device, batch_size=128, epoch=EPOCH)
+    testModel(model, loader_test, loss_fn, device, epoch=1)
