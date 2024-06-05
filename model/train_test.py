@@ -126,7 +126,6 @@ def testModel(model: nn.Module,
             for batch, data in enumerate(dataloader):
                 
                 X, y = data
-
                 X = X.to(device)
                 y = y.to(device)
                 batch_s, _,_,_ = X.shape
@@ -175,7 +174,7 @@ if __name__ == '__main__':
         v2.Resize((32, 32), interpolation=InterpolationMode.NEAREST_EXACT),
         v2.RandomHorizontalFlip(),
         v2.RandomAutocontrast(p=1.0),
-        #v2.RandomEqualize()
+        v2.RandomEqualize()
         
     ])
 
@@ -183,7 +182,7 @@ if __name__ == '__main__':
     dataset_test = Dataset(labels_path=LABELS_PATH_TEST, imgs_dir=IMGS_PATH_TEST, transform=seq)
 
 
-    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
+    loader_train = DataLoader(dataset_train, batch_size=128, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
     model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
@@ -191,7 +190,7 @@ if __name__ == '__main__':
 
     loss_fn = nn.CrossEntropyLoss()
 
-    optimizer = torch.optim.SGD(model.parameters(),  lr=0.005, momentum=0.9, weight_decay=5e-4)
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001, weight_decay=5e-4)
 
     trainModel(model, loader_train, loss_fn, optimizer, device, epoch=EPOCH)
     testModel(model, loader_test, loss_fn, device, epoch=EPOCH)
