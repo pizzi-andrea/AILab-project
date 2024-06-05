@@ -172,8 +172,9 @@ if __name__ == '__main__':
     model = resnet18(43)
 
     #model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
-    device =  "cuda" if torch.cuda.is_available()  else "cpu"
-
+    #device =  "cuda" if torch.cuda.is_available()  else "cpu"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     loss_fn = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.AdamW(model.parameters(),  lr=0.005, weight_decay=5e-4)

@@ -1,4 +1,3 @@
-from pickle import FALSE
 import torch 
 import collections
 from torch import nn
@@ -9,7 +8,7 @@ from time import time
 from tqdm.auto import tqdm
 from torchmetrics.classification import MulticlassAccuracy
 from Model import ModelCNN
-from Model2 import resnet32, resnet18
+from Model2 import resnet32
 from torchvision.transforms import v2
 from torchvision.transforms import InterpolationMode
 from GTSRB_Dataset import GTSRB_Dataset as Dataset
@@ -159,6 +158,7 @@ if __name__ == '__main__':
         v2.Resize((32, 32), interpolation=InterpolationMode.NEAREST_EXACT),
         v2.RandomHorizontalFlip(),
         v2.RandomAutocontrast(p=1.0),
+        #v2.RandomEqualize()
         
     ])
 
@@ -169,14 +169,14 @@ if __name__ == '__main__':
     loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    model = resnet18(43)
+    model = resnet32(43)
 
     #model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
     device =  "cuda" if torch.cuda.is_available()  else "cpu"
 
     loss_fn = nn.CrossEntropyLoss()
 
-    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.005, weight_decay=5e-4)
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001)
 
     for epoch in range(EPOCH):
 
