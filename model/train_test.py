@@ -19,73 +19,78 @@ def trainModel(model: nn.Module,
                loss_fn: nn.Module, 
                optimizer: Optimizer,
                device: torch.device,
-               batch_size,
                epoch = 15):
     """
         Main loop for traning the model
     """
+    ordered_dict = dict()
     since = time()
+    pbar = tqdm()
+    
     model.to(device)
+    model.train(True)
+    BATCH_SIZE = dataloader.batch_size
+        
+
 
     metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True)
+    ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
     # Main loop for traning
     for epoch in range(epoch):
-        print("epoch {}".format(epoch))
-        
-        
-        pbar = tqdm()
+        print("epoch {}".format(epoch + 1))
         pbar.reset(total=len(dataloader.dataset))
-        ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
+        ordered_dict["Acc"] = 0
+        ordered_dict["Loss"] = 0
+        ordered_dict["phase"] = "train"
+        pbar.set_postfix(ordered_dict=ordered_dict)
+        pbar.update()
+        
+        
         
         running_loss = 0.0
-        running_corrects = 0.0
 
-        for iter, data in enumerate(dataloader):
+        for batch, data in enumerate(dataloader):
 
             X, y = data
 
             X = X.to(device)
             y = y.to(device)
 
-            now_batch_size,c,h,w = X.shape
-            pbar.update(now_batch_size)  
-
+            batch_s, _,_,_ = X.shape
+            pbar.update(batch_s) 
             optimizer.zero_grad()
-
             
+            # make prediction for X test data
             y_pred = model(X)
-            loss = loss_fn(y_pred, y)
 
-            
+            loss = loss_fn(y_pred, y)
             loss.backward()
             optimizer.step()
 
+            # Calculate metrics
+
             running_loss += loss.item()
-            running_corrects += float(torch.sum(y_pred.argmax(dim = 1) == y) / batch_size) 
 
-
-            ordered_dict["phase"] = "train"
-            ordered_dict["Acc"] = f"{float(torch.eq(y, y_pred.argmax(dim = 1)).sum().item()/len(y_pred.argmax(dim = 1))):.4f}"
+            ordered_dict["Acc"] = metric_acc(y_pred, y).numpy()
             ordered_dict["Loss"] = f"{loss.item():.4f}"
 
             pbar.set_postfix(ordered_dict=ordered_dict)
-            #pbar.close()
             
         
+        # Print metrics after one epochs
         epoch_loss = running_loss / len(dataloader)
-        epoch_acc = running_corrects / len(dataloader)
+        epoch_acc = metric_acc.compute().numpy()
 
-        ordered_dict["phase"] = 'train'
         ordered_dict["Loss"] = f"{epoch_loss:.4f}"
         ordered_dict["Acc"] = f"{epoch_acc:.4f}"
-
         pbar.set_postfix(ordered_dict=ordered_dict)
-        pbar.close()
+
+    pbar.close()
 
 
 
     # Show final metrics
-    time_elapsed = time.time() - since
+    time_elapsed = time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
 
@@ -101,25 +106,31 @@ def testModel(model: nn.Module,
     model.to(device)
     
     metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True)
+    ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
+
+    pbar = tqdm()
     # Main loop for traning
     with torch.no_grad():
         for epoch in range(epoch):
-            print("epoch {}".format(epoch))
-            
-            pbar = tqdm()
+            print("epoch {}".format(epoch + 1))
+            #pbar.reset(total=19_503)
             pbar.reset(total=len(dataloader.dataset))
-            ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
+            ordered_dict["Acc"] = 0
+            ordered_dict["Loss"] = 0
+            ordered_dict["phase"] = "test"
+            pbar.set_postfix(ordered_dict=ordered_dict)
+            
             
             running_loss = 0.0
 
             for batch, data in enumerate(dataloader):
-
+                
                 X, y = data
 
                 X = X.to(device)
                 y = y.to(device)
-
-                pbar.update(batch)  
+                batch_s, _,_,_ = X.shape
+                pbar.update(batch_s)  
                 
                 # make prediction for X test data
                 y_pred = model(X)
@@ -130,34 +141,35 @@ def testModel(model: nn.Module,
 
                 running_loss += loss.item()
 
-                ordered_dict["phase"] = "train"
-                ordered_dict["Acc"] = metric_acc(y_pred, y)
+                
+                ordered_dict["Acc"] = metric_acc(y_pred, y).numpy()
                 ordered_dict["Loss"] = f"{loss.item():.4f}"
 
                 pbar.set_postfix(ordered_dict=ordered_dict)
                 
-            
+    
             # Print metrics after one epochs
             epoch_loss = running_loss / len(dataloader)
-            epoch_acc = metric_acc.compute()
+            epoch_acc = metric_acc.compute().numpy()
 
-            ordered_dict["phase"] = "train"
+            ordered_dict["phase"] = "test"
             ordered_dict["Loss"] = f"{epoch_loss:.4f}"
             ordered_dict["Acc"] = f"{epoch_acc:.4f}"
 
             pbar.set_postfix(ordered_dict=ordered_dict)
-            pbar.close()
+
+        pbar.close()
 
 
     # Show final metrics
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
+    time_elapsed = time() - since
+    print('Testing complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
     
 
 if __name__ == '__main__':
 
-    EPOCH = 10
+    EPOCH = 3
     seq = v2.Compose([
         v2.ToDtype(torch.float32, scale=True),
         v2.Resize((32, 32), interpolation=InterpolationMode.NEAREST_EXACT),
@@ -181,5 +193,5 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.SGD(model.parameters(),  lr=0.005, momentum=0.9, weight_decay=5e-4)
 
-    #trainModel(model, loader_train, loss_fn, optimizer, device, 64)
-    testModel(model, loader_test, loss_fn, device)
+    trainModel(model, loader_train, loss_fn, optimizer, device, epoch=EPOCH)
+    testModel(model, loader_test, loss_fn, device, epoch=EPOCH)
