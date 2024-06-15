@@ -8,7 +8,7 @@ from torch.optim import Optimizer
 from time import time
 from tqdm.auto import tqdm
 from torchmetrics.classification import MulticlassAccuracy
-from Model2 import Model2 as Model
+from Model import ModelCNN
 from torchvision.transforms import v2
 from torchvision.transforms import InterpolationMode
 from GTSRB_Dataset import GTSRB_Dataset as Dataset
@@ -169,7 +169,7 @@ def plot_confusion_matrix(cm, class_names):
 
 if __name__ == '__main__':
 
-    EPOCH = 10
+    EPOCH = 30
     seq = v2.Compose([
         v2.ToDtype(torch.float32, scale=True),
         v2.Resize((48, 48), interpolation=InterpolationMode.NEAREST_EXACT),
@@ -184,12 +184,15 @@ if __name__ == '__main__':
     loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    model = Model(input_channels=3, input_shape=48, hidden_units=64, output_shape=43)
+    #model = Model(input_channels=3, input_shape=48, output_shape=43)
+    model = ModelCNN(input_channels=3, input_shape=3, hidden_units=64, output_shape=43)
     device =  "cuda" if torch.cuda.is_available()  else "cpu"
 
     loss_fn = nn.CrossEntropyLoss()
+    # lr = 1e-4 , weight_decay = 0 circa 96.7% (senza pre-processing)
+    # lr = 0.005 circa 94% acc (senza pre-processing)
 
-    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001)
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=1e-4, weight_decay=0)
 
 
     for epoch in range(EPOCH):

@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformerGPU import SpatialTransformer
+from STN import SpatialTransformer
 
 # Create a convolutional neural network
 
@@ -9,8 +9,11 @@ class ModelCNN(nn.Module):
     Model architecture copying TinyVGG from:
     https://poloclub.github.io/cnn-explainer/
     """
-    def __init__(self, input_shape: int, hidden_units: int, output_shape: int):
+    def __init__(self, input_channels:int, input_shape: int, hidden_units: int, output_shape: int):
         super().__init__()
+
+        self.sp1 = SpatialTransformer(input_shape)
+        
         self.block_1 = nn.Sequential(
             nn.Conv2d(in_channels=input_shape,
                       out_channels=hidden_units,
@@ -29,7 +32,9 @@ class ModelCNN(nn.Module):
             nn.MaxPool2d(kernel_size=2,
                          stride=2) # default stride value is same as kernel_size
         )
-        self.sp1 = SpatialTransformer(hidden_units)
+
+        self.sp2 = SpatialTransformer(hidden_units)
+        
         
         self.block_2 = nn.Sequential(
             nn.Conv2d(hidden_units, hidden_units*2, 3, padding=1),
@@ -40,7 +45,7 @@ class ModelCNN(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
-        self.sp2 = SpatialTransformer(hidden_units)
+        self.sp3 = SpatialTransformer(hidden_units)
         
         self.block_3 = nn.Sequential(
             nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
@@ -67,15 +72,15 @@ class ModelCNN(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
+        x = self.sp1(x)
         x = self.block_1(x)
-        #x = self.sp1(x)
-        #print(x.shape)
-        x = self.block_2(x)
+
         x = self.sp2(x)
-        
-        #print(x.shape)
+        x = self.block_2(x)
+
+        x = self.sp3(x)
         x = self.block_3(x)
+
         x = self.classifier(x)
-        #print(x.shape)
         return x
 
