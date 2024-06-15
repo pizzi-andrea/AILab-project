@@ -15,6 +15,7 @@ img4.jpg,0
 2 = car
 3 = airplane
 '''
+from locale import atoi
 from pathlib import Path
 import pandas as pd
 from torch import Tensor
@@ -23,7 +24,9 @@ from torchvision.io import read_image
 from torch.utils.data import Dataset
 from torchvision.transforms import v2 
 from torch.nn import Module
+import torch
 from __global__ import *
+
 class GTSRB_Dataset(Dataset):
     
     def __init__(self,labels_path:Path, imgs_dir:Path,transform:v2.Compose = None) -> None:
@@ -31,9 +34,13 @@ class GTSRB_Dataset(Dataset):
         self.imgs_dir = imgs_dir
         self.transform = transform
         self.labels = pd.read_csv(labels_path)
+        self.classes = [ v for v in  range(0, 42)]
 
     def __len__(self) -> int:
         return len(self.labels)
+    
+    def labels(self) -> list:
+        return self.classes
 
     def __getitem__(self, index:int) -> tuple[Tensor, int]: # type: ignore
         # create the imgs path

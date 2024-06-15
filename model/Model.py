@@ -59,9 +59,9 @@ class ModelCNN(nn.Module):
             nn.Flatten(),
             # Where did this in_features shape come from?
             # It's because each layer of our network compresses and changes the shape of our inputs data.
-            nn.Linear(in_features=hidden_units*4*4,
-                      out_features=hidden_units*4*4),
-            nn.Linear(in_features=hidden_units*4*4,
+            nn.Linear(in_features=2304,
+                      out_features=2304),
+            nn.Linear(in_features=2304,
                       out_features=output_shape),
             
         )

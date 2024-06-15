@@ -9,15 +9,15 @@ from time import time
 from tqdm.auto import tqdm
 from torchmetrics.classification import MulticlassAccuracy
 from Model import ModelCNN
-from Model2 import resnet32, resnet18
 from torchvision.transforms import v2
 from torchvision.transforms import InterpolationMode
 from GTSRB_Dataset import GTSRB_Dataset as Dataset
 from __global__ import *
 import torch
-
-from vit_pytorch import ViT
-
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def trainModel(model: nn.Module, 
@@ -103,6 +103,9 @@ def testModel(model: nn.Module,
     metric_acc = MulticlassAccuracy(num_classes=43,validate_args=True).to(device)
     ordered_dict = collections.OrderedDict(phase="", Loss="", Acc="")
 
+    y_tot_pred = torch.empty(0)
+    y_tot_label = torch.empty(0)
+    empty_tensor = torch.empty(0)
     pbar = tqdm()
     # Main loop for traning
     with torch.no_grad():
@@ -129,6 +132,9 @@ def testModel(model: nn.Module,
 
             loss = loss_fn(y_pred, y)
 
+            y_tot_pred = torch.cat( (y_tot_pred, torch.argmax(y_pred.cpu(), dim=1)) )
+            y_tot_label = torch.cat( (y_tot_label, y.cpu()) )
+
             # Calculate metrics
 
             running_loss += loss.item()
@@ -152,15 +158,21 @@ def testModel(model: nn.Module,
 
     pbar.close()
 
+    return y_tot_pred, y_tot_label
 
+def plot_confusion_matrix(cm, class_names):
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.show()
 
 if __name__ == '__main__':
 
-    EPOCH = 40
+    EPOCH = 10
     seq = v2.Compose([
         v2.ToDtype(torch.float32, scale=True),
-        v2.Resize((32, 32), interpolation=InterpolationMode.NEAREST_EXACT),
-        v2.RandomHorizontalFlip(),
+        v2.Resize((48, 48), interpolation=InterpolationMode.NEAREST_EXACT),
         v2.RandomAutocontrast(p=1.0),
         
     ])
@@ -172,18 +184,13 @@ if __name__ == '__main__':
     loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    #model = resnet18(43)
-    model = ModelCNN(3, 16, output_shape=43)
-
-
-    
-
-    #model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
+    model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
     device =  "cuda" if torch.cuda.is_available()  else "cpu"
 
     loss_fn = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001)
+
 
     for epoch in range(EPOCH):
 
@@ -191,5 +198,14 @@ if __name__ == '__main__':
 
         trainModel(model, loader_train, loss_fn, optimizer, device, epoch=EPOCH)
         testModel(model, loader_test, loss_fn, device, epoch=1)
+    
+    all_labels, all_preds = testModel(model, loader_test, loss_fn, device, epoch=1)
 
-        print()
+    
+   
+    cm = confusion_matrix(all_labels, all_preds)
+    plot_confusion_matrix(cm,dataset_test.classes)
+   
+
+
+    

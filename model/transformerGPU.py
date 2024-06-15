@@ -68,5 +68,5 @@ stn.to(device)
 input_tensor = torch.randn(64, input_channels, 8, 8).to(device)  # Batch of 32 images of size 8x8 with `input_channels` channels
 transformed_input = stn(input_tensor)
 
-print("Input shape:", input_tensor.shape)
-print("Transformed input shape:", transformed_input.shape)
+#print("Input shape:", input_tensor.shape)
+#print("Transformed input shape:", transformed_input.shape)

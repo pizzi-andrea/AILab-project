@@ -1,104 +1,87 @@
 import torch
 from torch import nn
-from transformerGPU import SpatialTransformer
+from STN import STN
 
-class BasicBlock(nn.Module):
-    """
-    two 3x3 convolutional layers
-    """
-    expansion = 1
+class Model2(nn.Module):
 
-    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+    def __init__(self, input_channels: int, input_shape: int, output_shape: int):
+
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride,
-                               padding=1)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels * self.expansion, kernel_size=3,
-                               stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_channels * self.expansion)
-        self.downsample = downsample
-        self.stride = stride
+        self.pre_processing = nn.Sequential(
+            nn.LayerNorm(normalized_shape=[input_channels, input_shape, input_shape]),
+            nn.LocalResponseNorm(size=3)
+        )
+
+        self.spatial1 = STN()
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=200, kernel_size=5, stride=1, padding=2
+            ),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2)
+
+        )
+
+        self.spatial2 = STN()
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=200, out_channels=250, kernel_size=5, padding=2, stride=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
+
+
+        self.spatial3 = STN()
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=250, out_channels=350, kernel_size=5, padding=2, stride=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
+
+        
+
+        self.classification = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features= 12_600, out_features=400),
+            nn.ReLU(),
+            nn.Linear(in_features=400, out_features=output_shape),
+            nn.Softmax(dim=0)
+        )
     
-    def forward(self, x):
-        shortcut = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
+    def forward(self, x: torch.Tensor):
+        x = self.pre_processing(x)
+        
+        # fectures exstraction
+        x = self.spatial1(x)
+        x = self.conv1(x)
+      
 
-        out = self.conv2(out)
-        out = self.bn2(out)
-        if self.downsample is not None:
-            shortcut = self.downsample(x)
-        out += shortcut
-        out = self.relu(out)
-        return out
+        x = self.spatial2(x)
+        x = self.conv2(x)
 
-class ResNet(nn.Module):
-    def __init__(self, block, layers, num_classes=1000):
-        super().__init__()
-        self.inplanes = 64
+        x = self.spatial3(x)
+        x = self.conv3(x)
+        
+        
+        # classification
+        x = self.classification(x)
 
-        # self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=2, padding=1)
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3) 
-        self.bn1 = nn.BatchNorm2d(self.inplanes)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        # backbone
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.sp1 = SpatialTransformer(64)
-       
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.sp2 = SpatialTransformer(128)
+        return x
 
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        #self.sp3 = SpatialTransformer(256)
 
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        # classifier
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+if __name__ == '__main__':
+    m = Model2(input_channels=1, input_shape= 46, output_shape=43)
 
-    def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1,
-                          stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion)
-            )
-        layers = []
-        layers.append(block(self.inplanes, planes,stride, downsample))
-        self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-        return nn.Sequential(*layers)
+    test = torch.randint(1, 256, size=(46, 46))
+    print(test.shape)
+
+    m(test)
+
+
+
+
+
     
-    def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.maxpool(out)
-
-        out = self.layer1(out)
-        out = self.sp1(out)
-
-        out = self.layer2(out)
-        #print(out.shape)
-        out = self.sp2(out)
-
-        out = self.layer3(out)
-        #out = self.sp3(out)
-
-        out = self.layer4(out)
-
-        out = self.avgpool(out)
-        out = out.flatten(1)
-        out = self.fc(out)
-        return out
-
-def resnet32(num_classes=1000):
-    return ResNet(BasicBlock, [3, 4, 6, 3], num_classes)
-
-def resnet18(num_classes=1000):
-    return ResNet(BasicBlock, [2, 2, 2, 2], num_classes)
+        
+        
