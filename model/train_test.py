@@ -16,6 +16,9 @@ from GTSRB_Dataset import GTSRB_Dataset as Dataset
 from __global__ import *
 import torch
 
+from vit_pytorch import ViT
+
+
 
 def trainModel(model: nn.Module, 
                dataloader: DataLoader,
@@ -153,7 +156,7 @@ def testModel(model: nn.Module,
 
 if __name__ == '__main__':
 
-    EPOCH = 20
+    EPOCH = 40
     seq = v2.Compose([
         v2.ToDtype(torch.float32, scale=True),
         v2.Resize((32, 32), interpolation=InterpolationMode.NEAREST_EXACT),
@@ -169,14 +172,18 @@ if __name__ == '__main__':
     loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    model = resnet18(43)
+    #model = resnet18(43)
+    model = ModelCNN(3, 16, output_shape=43)
+
+
+    
 
     #model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
     device =  "cuda" if torch.cuda.is_available()  else "cpu"
 
     loss_fn = nn.CrossEntropyLoss()
 
-    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.005, weight_decay=5e-4)
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001)
 
     for epoch in range(EPOCH):
 
