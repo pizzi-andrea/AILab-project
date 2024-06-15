@@ -8,7 +8,7 @@ from torch.optim import Optimizer
 from time import time
 from tqdm.auto import tqdm
 from torchmetrics.classification import MulticlassAccuracy
-from Model import ModelCNN
+from Model2 import Model2 as Model
 from torchvision.transforms import v2
 from torchvision.transforms import InterpolationMode
 from GTSRB_Dataset import GTSRB_Dataset as Dataset
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    model = ModelCNN(input_shape=3, hidden_units=64, output_shape=43)
+    model = Model(input_channels=3, input_shape=48, hidden_units=64, output_shape=43)
     device =  "cuda" if torch.cuda.is_available()  else "cpu"
 
     loss_fn = nn.CrossEntropyLoss()

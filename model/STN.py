@@ -1,28 +1,26 @@
-from torch import nn
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-class STN(nn.Module):
-    def __init__(self):
-        super(STN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
 
-        # Spatial transformer localization-network
+class SpatialTransformer(nn.Module):
+    def __init__(self, input_channels):
+        super(SpatialTransformer, self).__init__()
+        # Localisation network for images with any number of channels
         self.localization = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=7),
+            nn.Conv2d(input_channels, 8, kernel_size=3, padding=1),
             nn.MaxPool2d(2, stride=2),
             nn.ReLU(True),
-            nn.Conv2d(8, 10, kernel_size=5),
-            nn.MaxPool2d(2, stride=2),
+            nn.Conv2d(8, 10, kernel_size=3, padding=1),
+            nn.AdaptiveMaxPool2d( (2, 2) ),
             nn.ReLU(True)
         )
 
-        # Regressor for the 3 * 2 affine matrix
+        # Placeholder for input size of the fully connected layer
+        self.fc_loc_input_size = None
+
+        # Fully connected layer to output the 2x3 affine transformation matrix
         self.fc_loc = nn.Sequential(
-            nn.Linear(10 * 3 * 3, 32),
+            nn.Linear(10 * 2 * 2, 32),
             nn.ReLU(True),
             nn.Linear(32, 3 * 2)
         )
@@ -31,27 +29,38 @@ class STN(nn.Module):
         self.fc_loc[2].weight.data.zero_()
         self.fc_loc[2].bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
 
-    # Spatial transformer network forward function
-    def stn(self, x):
+    def _get_fc_loc_input_size(self, input_shape):
+        dummy_input = torch.zeros(1, *input_shape).to(next(self.parameters()).device)
+        dummy_output = self.localization(dummy_input)
+        return int(torch.prod(torch.tensor(dummy_output.size()[1:])))
+
+    def forward(self, x):
+        # Forward pass through the localisation network
         xs = self.localization(x)
-        xs = xs.view(-1, 10 * 3 * 3)
+        xs = xs.view(xs.size(0), -1)
+        
+        # Dynamically set the input size of the fully connected layer
+        if self.fc_loc_input_size is None:
+            self.fc_loc_input_size = self._get_fc_loc_input_size(x.shape[1:])
+            self.fc_loc[0] = nn.Linear(self.fc_loc_input_size, 32).to(x.device)
+            self.fc_loc[2] = nn.Linear(32, 3 * 2).to(x.device)
+            self.fc_loc[2].weight.data.zero_()
+            self.fc_loc[2].bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
+        
         theta = self.fc_loc(xs)
         theta = theta.view(-1, 2, 3)
 
-        grid = F.affine_grid(theta, x.size())
-        x = F.grid_sample(x, grid)
+        # Generate the grid using the predicted theta
+        grid = F.affine_grid(theta, x.size(), align_corners=False)
+        
+        # Sample the input image with the generated grid
+        x = F.grid_sample(x, grid, align_corners=False)
 
         return x
 
-    def forward(self, x):
-        # transform the input
-        x = self.stn(x)
+# Example usage
+# Assume input is a batch of images with size (N, C, H, W)
 
-        # Perform the usual forward pass
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
+
+#print("Input shape:", input_tensor.shape)
+#print("Transformed input shape:", transformed_input.shape)
