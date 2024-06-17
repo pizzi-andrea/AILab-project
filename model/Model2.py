@@ -3,7 +3,6 @@ from torch import nn
 from STN import SpatialTransformer as STN
 
 class Model2(nn.Module):
-
     def __init__(self, input_channels: int, input_shape: int, output_shape: int):
 
         super().__init__()
@@ -49,21 +48,21 @@ class Model2(nn.Module):
             nn.Linear(in_features= 350*6*6, out_features=400),
             nn.ReLU(),
             nn.Linear(in_features=400, out_features=output_shape),
-            nn.Softmax(dim=0)
+            # nn.Softmax(dim=1)
         )
     
     def forward(self, x: torch.Tensor):
         x = self.pre_processing(x)
         
         # fectures exstraction
-        #x = self.spatial1(x)
+        x = self.spatial1(x)
         x = self.conv1(x)
       
 
-       # x = self.spatial2(x)
+        x = self.spatial2(x)
         x = self.conv2(x)
 
-        #x = self.spatial3(x)
+        x = self.spatial3(x)
         x = self.conv3(x)
         
         

@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformerGPU import SpatialTransformer
+from STN import SpatialTransformer
 
 class BasicBlock(nn.Module):
     """
