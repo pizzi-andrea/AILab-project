@@ -1,3 +1,4 @@
+from sklearn import preprocessing
 import torch
 from torch import nn
 from STN import SpatialTransformer
@@ -11,6 +12,11 @@ class ModelCNN(nn.Module):
     """
     def __init__(self, input_channels:int, input_shape: int, hidden_units: int, output_shape: int):
         super().__init__()
+
+        self.pre_processing = nn.Sequential(
+            nn.LayerNorm(normalized_shape=[input_channels, 48, 48]),
+            nn.LocalResponseNorm(size=3)
+        )
 
         self.sp1 = SpatialTransformer(input_shape)
         
@@ -64,14 +70,17 @@ class ModelCNN(nn.Module):
             nn.Flatten(),
             # Where did this in_features shape come from?
             # It's because each layer of our network compresses and changes the shape of our inputs data.
-            nn.Linear(in_features=2304,
-                      out_features=2304),
-            nn.Linear(in_features=2304,
+            nn.Linear(in_features=1_152,
+                      out_features=1_152),
+            nn.Linear(in_features=1_152,
                       out_features=output_shape),
             
         )
 
     def forward(self, x: torch.Tensor):
+
+        x = self.pre_processing(x)
+
         x = self.sp1(x)
         x = self.block_1(x)
 
