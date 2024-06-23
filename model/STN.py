@@ -1,18 +1,20 @@
+#Various reports
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+#Defining spatial trasformer for the NeuralNetworks
 class SpatialTransformer(nn.Module):
     def __init__(self, input_channels):
         super(SpatialTransformer, self).__init__()
         # Localisation network for images with any number of channels
         self.localization = nn.Sequential(
-            nn.Conv2d(input_channels, 8, kernel_size=3, padding=1),
-            nn.MaxPool2d(2, stride=2),
-            nn.ReLU(True),
-            nn.Conv2d(8, 10, kernel_size=3, padding=1),
-            nn.AdaptiveMaxPool2d( (2, 2) ),
-            nn.ReLU(True)
+            nn.Conv2d(input_channels, 8, kernel_size=3, padding=1), # lconvolutional layer
+            nn.MaxPool2d(2, stride=2), 
+            nn.ReLU(True), # activation layer
+            nn.Conv2d(8, 10, kernel_size=3, padding=1), #convolutional layer
+            nn.AdaptiveMaxPool2d( (2, 2) ), 
+            nn.ReLU(True) # activation layer
         )
 
         # Placeholder for input size of the fully connected layer
