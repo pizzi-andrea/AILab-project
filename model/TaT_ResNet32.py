@@ -1,28 +1,27 @@
 #Various imports
+import pandas
 from sklearn.metrics import confusion_matrix
-from Model2 import Model2 as Model
+from ResNet import resnet32
 from torchvision.transforms import v2
 from torchvision.transforms import InterpolationMode
 from GTSRB_Dataset import GTSRB_Dataset as Dataset
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
-from os import listdir
-import pandas
-from TaT import trainModel, testModel
-from PlotGrapichs import plot_confusion_matrix
 from SaveModel import SaveModel
 from PlotGrapichs import plot_confusion_matrix,plot_grapich
+from os import listdir
+from TaT import trainModel, testModel
 from __global__ import *
 
-#setting default path for the saved model2
-DEFAULT_PATH = Path('saved_model/Model2')
+#setting default path for the saved model CNNModel
+DEFAULT_PATH = Path('saved_model/ResNet32')
 
-# main
+#main
 if __name__ == '__main__':
 
-    EPOCH = 80 #defining number of epoch
-    N_ESP = len (listdir(DEFAULT_PATH)) + 1 if DEFAULT_PATH.exists() else 0 
+    EPOCH = 10 #defining number of epoch
+    N_ESP = len (listdir(DEFAULT_PATH)) + 1 if DEFAULT_PATH.exists() else 0
     
     #defining the trasformation that the images will under go during training and test
     seq = v2.Compose([
@@ -30,7 +29,6 @@ if __name__ == '__main__':
         v2.ToDtype(torch.float32, scale=True), #converting image to Dtype
         v2.Resize((48, 48), interpolation=InterpolationMode.NEAREST_EXACT),  #Resizing to 40x40
         v2.RandomAutocontrast(p=1.0), #applying contrast
-        
     ])
 
     #dataset used for training and test
@@ -38,36 +36,37 @@ if __name__ == '__main__':
     dataset_test = Dataset(labels_path=LABELS_PATH_TEST, imgs_dir=IMGS_PATH_TEST, transform=seq)
 
     #dataloaders for training and test
-    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)
+    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)  
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    model = Model(input_channels=3, input_shape=48, output_shape=43) #defining the model
-    device =  "cuda" if torch.cuda.is_available() else "cpu" #selecting the device
+    model = resnet32(43) 
+    device =  "cuda" if torch.cuda.is_available()  else "cpu" #selecting the device
 
     loss_fn = nn.CrossEntropyLoss() #getting the loss
-    # 94%
+    # lr = 1e-4 , weight_decay = 0 circa 96.7% (senza pre-processing)
+    # lr = 0.005 circa 94% acc (senza pre-processing)
+    # 98.34%
 
-    #defining the optimizer, we use adamW with a learning rate of 1e^10^-4 and a decay of 0
-    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001, weight_decay=1e-5)
+    #defining the optimizer, we use adamW with a learning rate of 1^(10^-4) and a decay of 0
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=1e-4, weight_decay=0)
 
     best_acc_test = 0
     model_weights = None
 
-    #defining an history all values of the epoch, accuracy and loss
+    #defining an history for all values of the epoch, accuracy and loss
     epoch_history    = []
     accuracy_history = []
     loss_history     = []
-    
     accuracy_history_train = []
     loss_history_train     = []
 
     for epoch in range(EPOCH):
-    
+
         print("epoch {}".format(epoch + 1))
 
         #training the model
         epoch_acc_train, epoch_loss_train = trainModel(model, loader_train, loss_fn, optimizer, device)
-
+        
         #doing the test and getting the result datas
         epoch_acc, epoch_loss, all_preds, all_labels = testModel(model, loader_test, loss_fn, device)
 
@@ -85,23 +84,21 @@ if __name__ == '__main__':
             #switching the best accuracy with the new one
             best_acc_test = epoch_acc
 
-
     """
         Save Results
     """
 
     save_path = Path(DEFAULT_PATH.joinpath(f'ts{N_ESP}')) #path where we're gonna save the confusion matrix
-    
     SaveModel(model_weights, save_path, accuracy_history_train, loss_history_train,accuracy_history, loss_history, epoch_history) #saving data on a csv
+
 
     #doing the test and obtaining it's result
     epoch_acc, epoch_loss, all_preds, all_labels = testModel(model, loader_test, loss_fn, device)
-    
-    
+
     #creating and setting the confusion matrix
     cm = confusion_matrix(all_labels, all_preds)
     plot_confusion_matrix(cm,dataset_test.classes,save_path)
 
     #plotting the data in the file .csv with pandas
-    plot_grapich(pandas.read_csv(save_path.joinpath('history_acc.csv'), index_col=None), 'epochs',  'CNNModel(Accuracy)', save_path.joinpath('Accuracy.png'), 'epochs', 'accuracy(%)' )
-    plot_grapich(pandas.read_csv(save_path.joinpath('history_loss.csv'), index_col=None), 'epochs',  'CNNModel(Loss)', save_path.joinpath('Loss.png'), 'epochs', 'Loss' )
+    plot_grapich(pandas.read_csv(save_path.joinpath('history_acc.csv'), index_col=None), 'epochs',  'ResNet32(Accuracy)', save_path.joinpath('Accuracy.png'), 'epochs', 'accuracy(%)' )
+    plot_grapich(pandas.read_csv(save_path.joinpath('history_loss.csv'), index_col=None), 'epochs',  'ResNet32(Loss)', save_path.joinpath('Loss.png'), 'epochs', 'Loss' )

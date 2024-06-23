@@ -1,4 +1,4 @@
-#Various imports for the program
+#Various imports
 import torch 
 import collections
 from torch import nn
@@ -30,7 +30,7 @@ def trainModel(model: nn.Module,
     ordered_dict["Acc"] = 0
     ordered_dict["Loss"] = 0
     ordered_dict["phase"] = "train"
-
+    
     # preparing the progress bar
     pbar.reset(total=len(dataloader.dataset) + 2)
     pbar.set_postfix(ordered_dict=ordered_dict)
@@ -76,6 +76,8 @@ def trainModel(model: nn.Module,
 
     pbar.close() #closing the progress bar
 
+    return epoch_acc, epoch_loss
+
 
 #Defining the model needed for the test
 def testModel(model: nn.Module, 
@@ -91,7 +93,6 @@ def testModel(model: nn.Module,
 
     y_tot_pred = torch.empty(0) #creating a tensor for the predictions
     y_tot_label = torch.empty(0) #creating a tensor for the matched labels
-    empty_tensor = torch.empty(0) #creating a empty tensor for general uses
     pbar = tqdm()   #progress bar
     
     

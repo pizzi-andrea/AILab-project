@@ -20,11 +20,12 @@ DEFAULT_PATH = Path('saved_model/CNNModel')
 #main
 if __name__ == '__main__':
 
-    EPOCH = 10 #defining number of epoch
+    EPOCH = 1 #50  #defining number of epoch
     N_ESP = len (listdir(DEFAULT_PATH)) + 1 if DEFAULT_PATH.exists() else 0
     
     #defining the trasformation that the images will under go during training and test
     seq = v2.Compose([
+        v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True), #converting image to Dtype
         v2.Resize((48, 48), interpolation=InterpolationMode.NEAREST_EXACT),  #Resizing to 40x40
         v2.RandomAutocontrast(p=1.0), #applying contrast
@@ -36,10 +37,11 @@ if __name__ == '__main__':
     dataset_test = Dataset(labels_path=LABELS_PATH_TEST, imgs_dir=IMGS_PATH_TEST, transform=seq)
 
     #dataloaders for training and test
-    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3) # 94
+    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)  
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
-    model = ModelCNN(input_channels=3, input_shape=3, hidden_units=32, output_shape=43) # 96 #defining the model
+    model = ModelCNN(input_channels=3, input_shape=48, hidden_units=96, output_shape=43) 
+    torch.jit.trace(func=model)
     device =  "cuda" if torch.cuda.is_available()  else "cpu" #selecting the device
 
     loss_fn = nn.CrossEntropyLoss() #getting the loss
@@ -58,12 +60,15 @@ if __name__ == '__main__':
     accuracy_history = []
     loss_history     = []
 
+    accuracy_history_train = []
+    loss_history_train     = []
+
     for epoch in range(EPOCH):
 
         print("epoch {}".format(epoch + 1))
 
         #training the model
-        trainModel(model, loader_train, loss_fn, optimizer, device)
+        epoch_acc_train, epoch_loss_train = trainModel(model, loader_train, loss_fn, optimizer, device)
         
         #doing the test and getting the result datas
         epoch_acc, epoch_loss, all_preds, all_labels = testModel(model, loader_test, loss_fn, device)
@@ -76,6 +81,8 @@ if __name__ == '__main__':
             epoch_history.append(epoch)
             accuracy_history.append(epoch_acc)
             loss_history.append(epoch_loss)
+            accuracy_history_train.append(epoch_acc_train)
+            loss_history_train.append(epoch_loss_train)
 
             #switching the best accuracy with the new one
             best_acc_test = epoch_acc
@@ -85,7 +92,8 @@ if __name__ == '__main__':
     """
 
     save_path = Path(DEFAULT_PATH.joinpath(f'ts{N_ESP}')) #path where we're gonna save the confusion matrix
-    SaveModel(model_weights, save_path, accuracy_history, loss_history, epoch_history) #saving data on a csv
+    SaveModel(model_weights, save_path, accuracy_history_train, loss_history_train,accuracy_history, loss_history, epoch_history) #saving data on a csv
+
 
     #doing the test and obtaining it's result
     epoch_acc, epoch_loss, all_preds, all_labels = testModel(model, loader_test, loss_fn, device)
@@ -95,5 +103,5 @@ if __name__ == '__main__':
     plot_confusion_matrix(cm,dataset_test.classes,save_path)
 
     #plotting the data in the file .csv with pandas
-    plot_grapich(pandas.read_csv(save_path.joinpath('history.csv')), 'epochs', 'accuracy', 'CNNModel(Accuracy)', save_path.joinpath('Accuracy.png'), 'epochs', 'accuracy(%)' )
-    plot_grapich(pandas.read_csv(save_path.joinpath('history.csv')), 'epochs', 'loss', 'CNNModel(Loss)', save_path.joinpath('Loss.png'), 'epochs', 'Loss' )
+    plot_grapich(pandas.read_csv(save_path.joinpath('history_acc.csv'), index_col=None), 'epochs',  'CNNModel(Accuracy)', save_path.joinpath('Accuracy.png'), 'epochs', 'accuracy(%)' )
+    plot_grapich(pandas.read_csv(save_path.joinpath('history_loss.csv'), index_col=None), 'epochs',  'CNNModel(Loss)', save_path.joinpath('Loss.png'), 'epochs', 'Loss' )
