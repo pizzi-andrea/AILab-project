@@ -41,7 +41,6 @@ if __name__ == '__main__':
     loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
 
     model = ModelCNN(input_channels=3, input_shape=48, hidden_units=96, output_shape=43) 
-    torch.jit.trace(func=model)
     device =  "cuda" if torch.cuda.is_available()  else "cpu" #selecting the device
 
     loss_fn = nn.CrossEntropyLoss() #getting the loss
