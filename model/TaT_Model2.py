@@ -21,7 +21,7 @@ DEFAULT_PATH = Path('saved_model/Model2')
 # main
 if __name__ == '__main__':
 
-    EPOCH = 80 #defining number of epoch
+    EPOCH = 10 #defining number of epoch
     N_ESP = len (listdir(DEFAULT_PATH)) + 1 if DEFAULT_PATH.exists() else 0 
     
     #defining the trasformation that the images will under go during training and test
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # 94%
 
     #defining the optimizer, we use adamW with a learning rate of 1e^10^-4 and a decay of 0
-    optimizer = torch.optim.AdamW(model.parameters(),  lr=0.001, weight_decay=1e-5)
+    optimizer = torch.optim.AdamW(model.parameters(),  lr=1e-4, weight_decay=0)
 
     best_acc_test = 0
     model_weights = None

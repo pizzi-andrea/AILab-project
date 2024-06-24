@@ -1,7 +1,7 @@
 #various import
 import torch
 from torch import nn
-from STN2 import STN
+from STN import SpatialTransformer as STN
 import matplotlib.pyplot as plt
 #create convolutional neural network
 class Model2(nn.Module):
@@ -13,7 +13,7 @@ class Model2(nn.Module):
             nn.LocalResponseNorm(size=3)
         )
 
-        self.spatial1 = STN(input_channels, 512) # first trasformer
+        self.spatial1 = STN(input_channels) # first trasformer
        
         self.conv1 = nn.Sequential( # first block, convolutional
              #convolutional layer
