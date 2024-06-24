@@ -1,7 +1,8 @@
 #Various imports
-from torchvision.models.detection import ssdlite320_mobilenet_v3_large as Net
-from torchvision.models.detection import SSDLite320_MobileNet_V3_Large_Weights as weights 
+from torchvision.models.detection import ssd300_vgg16  as Net
+from torchvision.models.detection import SSD300_VGG16_Weights as weights 
 from torchvision.transforms import v2
+from torchvision.transforms import InterpolationMode
 from GTSDB_Dataset import GTSDB_Dataset as Dataset
 import torch
 from torch.utils.data import DataLoader
@@ -40,6 +41,7 @@ def train_model(model: nn.Module,
     #init values for dict ordered_dict
     ordered_dict["Loss"] = 0
     ordered_dict["phase"] = "train"
+    ordered_dict['lr'] = lr_schedul.get_last_lr() if lr_schedul else 0
 
     # preparing the progress bar
     pbar.reset(total=len(dataloader.dataset) + 2)
@@ -66,15 +68,17 @@ def train_model(model: nn.Module,
         losses.backward()
         optimizer.step()
         
-        if lr_scheduler:
-            lr_scheduler.step()
+        
+            
 
         running_loss += loss_value #summing the total loss
         ordered_dict["Loss"] = f"{loss_value:.4f}" #inserting loss in dictionary
         pbar.set_postfix(ordered_dict=ordered_dict) 
-    
+    if lr_scheduler:
+        lr_scheduler.step()
     epoch_loss = running_loss / len(dataloader) #calc of total loss of the epoch
     ordered_dict["Loss"] = f"{epoch_loss:.4f}" #inserting accuracy in dictionary
+    ordered_dict['lr'] =  f"{lr_schedul.get_last_lr() if lr_schedul else 0}"
     pbar.set_postfix(ordered_dict=ordered_dict)
 
     return epoch_loss
@@ -149,11 +153,11 @@ def saveTest(result: list, path_to_save: Path):
         if not cv.imwrite(path_to_save.joinpath(str(i) + '.png'), img):
             assert 'Error: impossible write file in ' + path_to_save
     
-        
+     
 # main
 if __name__ == '__main__':
 
-    EPOCH = 50 # defining number of epoch 1_200
+    EPOCH = 2_400 # defining number of epoch 1_200
     N_ESP = len (listdir(DEFAULT_PATH)) + 1 if DEFAULT_PATH.exists() else 0 
     model_weights = None
 
@@ -164,8 +168,10 @@ if __name__ == '__main__':
 
     #defining the trasformation that the images will under go during training and test
     seq = v2.Compose([
+        v2.Resize((300, 300), InterpolationMode.LANCZOS),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True), #converting image to Dtype
+
         v2.RandomAutocontrast(p=1.0), #applying contrast  
     ])
 
@@ -173,18 +179,21 @@ if __name__ == '__main__':
     dataset_train = Dataset(IMGS_PATH_TRAIN_GTSDB, LABELS_PATH_TRAIN_GTSDB, transform=seq)
     dataset_test = Dataset(IMGS_PATH_TEST_GTSDB, transform=seq)
     model = Net() #defining the model
+
+    #model_weights = torch.load(Path(DEFAULT_PATH.joinpath(f'ts2/model_weights.pth')))
+    
     #model.load_state_dict(torch.load(Path(DEFAULT_PATH.joinpath(f'ts{N_ESP - 1}/model_weights.pth'))))
     #model = Net()
-    loader_train = DataLoader(dataset_train, batch_size=32, shuffle=True, num_workers=4, collate_fn=lambda x: tuple(zip(*x)))
+    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=4, collate_fn=lambda x: tuple(zip(*x)))
     loader_test = DataLoader(dataset=dataset_test, batch_size=1, shuffle=True)
     
     device =  "cuda" if torch.cuda.is_available()  else "cpu" #selecting the device
 
 
     #defining the optimizer, we use adamW with a learning rate of 1e^10^-4 and a decay of 0
-    #optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, weight_decay=0.0005)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.01, weight_decay=0)
-    lr_schedul = StepLR(optimizer=optimizer, step_size=EPOCH/2, gamma=0.1)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=0.0003)
+    optimizer = torch.optim.AdamW(model.parameters())
+    lr_schedul = StepLR(optimizer=optimizer, step_size=EPOCH, gamma=0.1)
 
     
     for epoch in range(1, EPOCH + 1):
@@ -192,7 +201,6 @@ if __name__ == '__main__':
 
         #training and getting the loss of the epoch
         epoch_loss = train_model(model, loader_train, optimizer, device, lr_schedul)
-        #test_model(model, loader_test, 0.45, device)
 
         #updating the best loss if necessary
         if best_loss is None or best_loss > epoch_loss: 
@@ -203,14 +211,12 @@ if __name__ == '__main__':
 
     #loading weights if is necessary
     if model_weights is None and N_ESP > 0:
-        #model_weights = torch.load(Path(DEFAULT_PATH.joinpath(f'ts{N_ESP - 1}/model_weights.pth')))
-        model_weights = torch.load(Path(DEFAULT_PATH.joinpath('pesi_ok/model_weights.pth')))
-    else:
-        model_weights = model.state_dict()
+        model_weights = torch.load(Path(DEFAULT_PATH.joinpath(f'ts{N_ESP - 1}/model_weights.pth')))
+        #model_weights = torch.load(Path(DEFAULT_PATH.joinpath('pesi_ok/model_weights.pth')))
     
     #loading the weights into the testing model
     model.load_state_dict(model_weights, strict=True)
-    r = test_model(model, loader_test, 0.030, device) #doing testing
+    r = test_model(model, loader_test, 0.1, device) #doing testing
     saveTest(r, Path(DEFAULT_PATH.joinpath(f'ts{N_ESP}'))) #saving datas about the test
 
     
@@ -219,7 +225,7 @@ if __name__ == '__main__':
 
 
     #plotting the data in the file .csv with pandas
-    plot_grapich(pandas.read_csv(save_path.joinpath('history_loss.csv'), index_col=None), 'epochs',  'CNNModel(Loss)', save_path.joinpath('Loss.png'), 'epochs', 'Loss' )
+    plot_grapich(pandas.read_csv(save_path.joinpath('history_loss.csv'), index_col=None), 'epochs',  'SSD300VGG16(Loss)', save_path.joinpath('Loss.png'), 'epochs', 'Loss' )
     
         
         

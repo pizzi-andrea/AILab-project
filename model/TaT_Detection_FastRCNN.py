@@ -152,7 +152,7 @@ def saveTest(result: list, path_to_save: Path):
 # main
 if __name__ == '__main__':
 
-    EPOCH = 2 #defining number of epoch
+    EPOCH = 100 #defining number of epoch
     N_ESP = len (listdir(DEFAULT_PATH)) + 1 if DEFAULT_PATH.exists() else 0 
     model_weights = None
 
@@ -173,7 +173,8 @@ if __name__ == '__main__':
     dataset_test = Dataset(IMGS_PATH_TEST_GTSDB, transform=seq)
     model = Net() #defining the model
     #model.load_state_dict(torch.load(Path(DEFAULT_PATH.joinpath(f'ts{N_ESP - 1}/model_weights.pth'))))
-    #model.load_state_dict(torch.load(Path(DEFAULT_PATH.joinpath(f'pesi_ok/model_weights.pth'))))
+    model_weights = torch.load(Path(DEFAULT_PATH.joinpath(f'pesi_ok/model_weights.pth')))
+    model.load_state_dict(model_weights)
 
   
     loader_train = DataLoader(dataset_train, batch_size=3, shuffle=True, num_workers=4, collate_fn=lambda x: tuple(zip(*x)))
@@ -203,12 +204,11 @@ if __name__ == '__main__':
     #loading weights if is necessary
     if model_weights is None and N_ESP > 0:
         model_weights = torch.load(Path(DEFAULT_PATH.joinpath(f'ts{N_ESP - 1}/model_weights.pth')))
-    else:
-        model_weights = model.state_dict()
+
     
     #loading the weights into the testing model
     model.load_state_dict(model_weights, strict=True)
-    r = test_model(model, loader_test, 0.60, device) #doing testing
+    r = test_model(model, loader_test, 0.98, device) #doing testing
     saveTest(r, Path(DEFAULT_PATH.joinpath(f'ts{N_ESP}'))) #saving datas about the test
 
     

@@ -1,0 +1,28 @@
+Comments
+
+- GTSDB_DATASET -> V
+- GTSRB_DATASET --> V
+- Model --> V
+- Model2 --> V
+- PlotGraphics -->  V
+- ResNet --> V
+- SaveModel --> V
+- STN --> V
+- STN2 --> V
+- TaT_CNNModel --> V
+- TaT_Detection_fast --> V
+- TaT_Model2 --> V
+- TaT --> V
+- TaT_Detection_ssd --> V
+- TaT_resnet18 --> V
+- TaT_resnet32 --> V
+- demo -> not to comment
+- demo pynb --> --
+- demo photo --> V
+- demo video --> V
+- dic_signals --> V
+
+
+
+- aggiungere rif. bibliografici alla relazione finale
+- link alla relazione finale 
