@@ -20,7 +20,9 @@ The primary objective of TSRD is to improve road safety by providing real-time i
 In this regard, our work has focused on studying the issues related to the application of machine learning to the main tasks of recognition and detection, and on developing artificial intelligence models capable of addressing the identified issues. Finally, we implemented the proposed networks to carry out the complete TSRD activity. The developed networks were trained and tested using the GTSRB(GermanTrafficSignalRecognition) and GTSDB (German Traffic Signal Detection) datasets.
 
 
+## Resurces Links
 
+- Google drive (weights in networks folder and other documents in doc folder): [Google Drive](https://drive.google.com/drive/folders/1-JOjMai1sxWdyWRNGd2zGAQsW9e7qpE7?usp=sharing)
 
 
 
