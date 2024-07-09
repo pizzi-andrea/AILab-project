@@ -37,11 +37,12 @@ if __name__ == '__main__':
     dataset_test = Dataset(labels_path=LABELS_PATH_TEST, imgs_dir=IMGS_PATH_TEST, transform=seq)
 
     #dataloaders for training and test
-    loader_train = DataLoader(dataset_train, batch_size=64, shuffle=True, num_workers=3)  
-    loader_test = DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=3)
+    loader_train = DataLoader(dataset_train, batch_size=32, shuffle=True, num_workers=3)  
+    loader_test = DataLoader(dataset_test, batch_size=32, shuffle=False, num_workers=3)
 
     model = ModelCNN(input_channels=3, input_shape=48, hidden_units=96, output_shape=43) 
     device =  "cuda" if torch.cuda.is_available()  else "cpu" #selecting the device
+    print(device)
 
     loss_fn = nn.CrossEntropyLoss() #getting the loss
     # lr = 1e-4 , weight_decay = 0 circa 96.7% (senza pre-processing)
